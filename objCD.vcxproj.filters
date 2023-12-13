@@ -58,10 +58,18 @@
     <ClInclude Include="inc\transf.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\cuda_colide.cuh">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="notes.txt">
       <Filter>Source Files</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="src\cuda_colide.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>

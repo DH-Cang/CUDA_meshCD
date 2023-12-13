@@ -33,6 +33,7 @@ using namespace std;
 #include "mat3f.h"
 #include "box.h"
 #include "crigid.h"
+#include "cuda_colide.cuh"
 
 inline double fmax(double a, double b, double c)
 {
