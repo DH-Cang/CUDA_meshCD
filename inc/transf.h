@@ -89,7 +89,7 @@ public:
 		_off = vec3f::zero();
 	}
 
-	FORCEINLINE vec3f getVertex(const vec3f& v) const
+	FORCEINLINE __host__ __device__ vec3f getVertex(const vec3f& v) const
 	{
 		return _trf * v + _off;
 	}

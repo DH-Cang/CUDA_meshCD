@@ -46,7 +46,7 @@ public:
 		_ids[2] = id2;
 	}
 
-	FORCEINLINE unsigned int id(int i) { return _ids[i]; }
+	FORCEINLINE __host__ __device__ unsigned int id(int i) { return _ids[i]; }
 	FORCEINLINE unsigned int id0() {return _ids[0];}
 	FORCEINLINE unsigned int id1() {return _ids[1];}
 	FORCEINLINE unsigned int id2() {return _ids[2];}

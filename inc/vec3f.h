@@ -30,6 +30,9 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <ostream>
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 #include "forceline.h"
 #include "real.h"
 
@@ -150,7 +153,7 @@ public:
 		};
 	};
 
-	FORCEINLINE vec3f ()
+	FORCEINLINE __host__  __device__ vec3f ()
 	{x=0; y=0; z=0;}
 
 	FORCEINLINE vec3f(const vec3f &v)
@@ -216,7 +219,7 @@ public:
 		return vec3f(fabs(x), fabs(y), fabs(z));
 	}
 
-	FORCEINLINE vec3f operator - () const {
+	FORCEINLINE __host__ __device__ vec3f operator - () const {
 		return vec3f(-x, -y, -z);
 	}
 
@@ -225,7 +228,7 @@ public:
 		return vec3f(x+v.x, y+v.y, z+v.z);
 	}
 
-	FORCEINLINE vec3f operator- (const vec3f &v) const
+	FORCEINLINE __host__ __device__ vec3f operator- (const vec3f &v) const
 	{
 		return vec3f(x-v.x, y-v.y, z-v.z);
 	}
@@ -241,7 +244,7 @@ public:
 	}
 
      // cross product
-     FORCEINLINE const vec3f cross(const vec3f &vec) const
+     FORCEINLINE __host__  __device__ const vec3f cross(const vec3f &vec) const
      {
           return vec3f(y*vec.z - z*vec.y, z*vec.x - x*vec.z, x*vec.y - y*vec.x);
      }
