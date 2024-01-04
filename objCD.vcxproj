@@ -223,7 +223,9 @@
     <ClCompile Include="src\cmodel.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">./inc;%(AdditionalIncludeDirectories);$(CUDA_V8_0_SAMPLES_INC);$(CUDA_PATH_V8_0)\include;.</AdditionalIncludeDirectories>
     </ClCompile>
-    <ClCompile Include="src\collid.cpp" />
+    <CudaCompile Include="src\collid.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
     <ClCompile Include="src\crigid.cpp" />
     <ClCompile Include="src\obj-viewer.cpp" />
   </ItemGroup>
@@ -238,6 +240,7 @@
     <ClInclude Include="inc\transf.h" />
     <ClInclude Include="inc\tri.h" />
     <ClInclude Include="inc\vec3f.h" />
+    <ClInclude Include="src\book.h" />
     <ClInclude Include="src\crigid.h" />
     <ClInclude Include="src\cuda_colide.cuh" />
   </ItemGroup>

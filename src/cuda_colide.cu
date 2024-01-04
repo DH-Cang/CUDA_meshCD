@@ -121,26 +121,25 @@ __device__ bool GPUTriangleContact(vec3f& P1, vec3f& P2, vec3f& P3, vec3f& Q1, v
 }
 
 __global__ void MeshIntersectCUDA(
-    const vec3f* mesh0_vertex_array, const tri3f* mesh0_triangle_array, transf transform0,
-    const vec3f* mesh1_vertex_array, const tri3f* mesh1_triangle_array, transf transform1,
-    int triangle_num, bool* intersect_result)
+    vec3f* mesh0_vertex_array, tri3f* mesh0_triangle_array, transf* transform0,
+    vec3f* mesh1_vertex_array, tri3f* mesh1_triangle_array, transf* transform1,
+    int* triangle_num, bool* triangle0_result, bool* triangle1_result)
 {
     int triangle_index0 = blockIdx.x * blockDim.x + threadIdx.x;
     int triangle_index1 = blockIdx.y * blockDim.y + threadIdx.y;
-    int output_index = triangle_num * triangle_index0 + triangle_index1;
 
     // make sure there is no overflow
-    if (triangle_index0 >= triangle_num || triangle_index1 >= triangle_num)
+    if (triangle_index0 >= *triangle_num || triangle_index1 >= *triangle_num)
     {
         return;
     }
     // reduce repeated computation
-    if (triangle_index0 < triangle_index1)
+    if (triangle_index0 > triangle_index1)
     {
         return;
     }
 
-    printf("compare triangle %d in mesh0 with triangle %d in mesh1", triangle_index0, triangle_index1);
+    printf("compare triangle %d in mesh0 with triangle %d in mesh1\n", triangle_index0, triangle_index1);
 
     // get vertex coords of triangle0, with transformation
     tri3f triangle0 = mesh0_triangle_array[triangle_index0];
@@ -148,7 +147,7 @@ __global__ void MeshIntersectCUDA(
     for (int i = 0; i < 3; i++)
     {
         triangle0_vertex_coords[i] = mesh0_vertex_array[triangle0.id(i)];
-        triangle0_vertex_coords[i] = transform0.getVertex(triangle0_vertex_coords[i]);
+        triangle0_vertex_coords[i] = transform0->getVertex(triangle0_vertex_coords[i]);
     }
 
     // get vertex coords of triangle1, with transformation
@@ -157,12 +156,15 @@ __global__ void MeshIntersectCUDA(
     for (int i = 0; i < 3; i++)
     {
         triangle1_vertex_coords[i] = mesh1_vertex_array[triangle1.id(i)];
-        triangle1_vertex_coords[i] = transform1.getVertex(triangle1_vertex_coords[i]);
+        triangle1_vertex_coords[i] = transform1->getVertex(triangle1_vertex_coords[i]);
     }
 
     // get triangle contact check result
-    intersect_result[output_index] = GPUTriangleContact(
+    bool result = GPUTriangleContact(
         triangle0_vertex_coords[0], triangle0_vertex_coords[1], triangle0_vertex_coords[2],
         triangle1_vertex_coords[0], triangle1_vertex_coords[1], triangle1_vertex_coords[2]
     );
+
+    triangle0_result[triangle_index0] = result;
+    triangle1_result[triangle_index1] = result;
 }

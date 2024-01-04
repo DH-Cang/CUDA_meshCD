@@ -20,9 +20,6 @@
     <ClCompile Include="src\crigid.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\collid.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\crigid.h">
@@ -61,6 +58,9 @@
     <ClInclude Include="src\cuda_colide.cuh">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\book.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="notes.txt">
@@ -69,6 +69,9 @@
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\cuda_colide.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\collid.cu">
       <Filter>Source Files</Filter>
     </CudaCompile>
   </ItemGroup>

@@ -28,12 +28,14 @@
 #include <set>
 #include <iostream>
 #include <stdio.h>
+#include <vector>
 
 using namespace std;
 #include "mat3f.h"
 #include "box.h"
 #include "crigid.h"
 #include "cuda_colide.cuh"
+#include "book.h"
 
 
 
@@ -109,6 +111,8 @@ triContact(vec3f& P1, vec3f& P2, vec3f& P3, vec3f& Q1, vec3f& Q2, vec3f& Q3)
 
 
 
+
+
 // input: kmesh0(this) with transformation t0
 //        kmesh1(other) with transformation t1
 void
@@ -134,8 +138,89 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 	//	}
 	//}
 
+	vec3f* device_bunny_vertex_array;
+	tri3f* device_bunny_triangle_array;
+	int* device_triangle_num;
+	transf* device_transform0;
+	transf* device_transform1;
+	bool* device_triangle0_result;
+	bool* device_triangle1_result;
 
+	// allocate memory
+	HANDLE_ERROR(cudaMalloc((void**)&device_bunny_vertex_array, _num_vtx * sizeof(vec3f)));
+	HANDLE_ERROR(cudaMalloc((void**)&device_bunny_triangle_array, _num_tri * sizeof(tri3f)));
+	HANDLE_ERROR(cudaMalloc((void**)&device_triangle_num, sizeof(unsigned int)));
+	HANDLE_ERROR(cudaMalloc((void**)&device_transform0, sizeof(transf)));
+	HANDLE_ERROR(cudaMalloc((void**)&device_transform1, sizeof(transf)));
+	HANDLE_ERROR(cudaMalloc((void**)&device_triangle0_result, _num_tri * sizeof(bool)));
+	HANDLE_ERROR(cudaMalloc((void**)&device_triangle1_result, _num_tri * sizeof(bool)));
 
+	// copy data from host to device
+	HANDLE_ERROR(cudaMemcpy(device_bunny_vertex_array, _vtxs, _num_vtx * sizeof(vec3f), cudaMemcpyHostToDevice));
+	HANDLE_ERROR(cudaMemcpy(device_bunny_triangle_array, _tris, _num_tri * sizeof(tri3f), cudaMemcpyHostToDevice));
+	HANDLE_ERROR(cudaMemcpy(device_triangle_num, &_num_tri, sizeof(unsigned int), cudaMemcpyHostToDevice));
+	HANDLE_ERROR(cudaMemcpy(device_transform0, &t0, sizeof(transf), cudaMemcpyHostToDevice));
+	HANDLE_ERROR(cudaMemcpy(device_transform1, &t1, sizeof(transf), cudaMemcpyHostToDevice));
 
+	// call kernel
+	//dim3    grids(128, 128);
+	//dim3    threads(1024, 1024);
+	unsigned int block_size = 256;
+	unsigned int num_blocks = (_num_tri + (block_size - 1)) / block_size;
+	dim3    grids(num_blocks, num_blocks);
+	dim3    threads(block_size, block_size);
+	MeshIntersectCUDA << < grids, threads >> > (
+		device_bunny_vertex_array, device_bunny_triangle_array, device_transform0,
+		device_bunny_vertex_array, device_bunny_triangle_array, device_transform1,
+		device_triangle_num, device_triangle0_result, device_triangle1_result);
+
+	// copy result from device to host
+	bool* triangle0_result = new bool[_num_tri];
+	bool* triangle1_result = new bool[_num_tri];
+	cudaMemcpy(triangle0_result, device_triangle0_result, _num_tri * sizeof(bool), cudaMemcpyDeviceToHost);
+	cudaMemcpy(triangle1_result, device_triangle1_result, _num_tri * sizeof(bool), cudaMemcpyDeviceToHost);
+
+	// free memory
+	HANDLE_ERROR(cudaFree(device_bunny_vertex_array));
+	HANDLE_ERROR(cudaFree(device_bunny_triangle_array));
+	HANDLE_ERROR(cudaFree(device_triangle_num));
+	HANDLE_ERROR(cudaFree(device_transform0));
+	HANDLE_ERROR(cudaFree(device_transform1));
+	HANDLE_ERROR(cudaFree(device_triangle0_result));
+	HANDLE_ERROR(cudaFree(device_triangle1_result));
+
+	int mesh0_first_tri = -1;
+	for (int i = 0; i < _num_tri; i++)
+	{
+		if (triangle0_result[i]) {
+			mesh0_first_tri = i;
+			break;
+		}
+	}
+	if (mesh0_first_tri == -1) return;
+
+	int mesh1_first_tri = -1;
+	for (int i = 0; i < _num_tri; i++)
+	{
+		if (triangle1_result[i]) {
+			mesh1_first_tri = i;
+			break;
+		}
+	}
+	if (mesh1_first_tri == -1) return;
+
+	for (int i = 0; i < _num_tri; i++)
+	{
+		if (triangle0_result[i]) 
+		{
+			rets.push_back(id_pair(i, mesh1_first_tri, false));
+		}
+		if (triangle1_result[i])
+		{
+			rets.push_back(id_pair(mesh0_first_tri, i, false));
+		}
+	}
+	delete[] triangle0_result;
+	delete[] triangle1_result;
 
 }
