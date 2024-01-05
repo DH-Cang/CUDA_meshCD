@@ -33,7 +33,7 @@
 using namespace std;
 #include "mat3f.h"
 #include "box.h"
-#include "crigid.h"
+#include "crigid.cuh"
 #include "cuda_colide.cuh"
 #include "book.h"
 

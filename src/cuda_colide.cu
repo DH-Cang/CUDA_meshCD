@@ -1,6 +1,5 @@
 #include "cuda_colide.cuh"
 
-
 // 定义核函数（在GPU上运行的函数）
 __global__ void vectorAddition(const float* a, const float* b, float* c, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;

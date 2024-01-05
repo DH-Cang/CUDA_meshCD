@@ -38,6 +38,7 @@
 
 #include <set>
 #include <vector>
+//#include <thrust/device_vector.h>
 using namespace std;
 
 class kmesh {

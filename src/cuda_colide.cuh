@@ -6,7 +6,7 @@
 #include "vec3f.h"
 #include "mat3f.h"
 #include "box.h"
-#include "crigid.h"
+#include "crigid.cuh"
 
 // __constant__ Sphere s[SPHERES];
 

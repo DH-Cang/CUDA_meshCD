@@ -34,7 +34,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "crigid.h"
+#include "crigid.cuh"
 #include "box.h"
 
 #include <set>

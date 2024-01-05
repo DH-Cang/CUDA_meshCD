@@ -220,14 +220,17 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\cmodel.cpp">
+    <CudaCompile Include="src\cmodel.cu">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">./inc;%(AdditionalIncludeDirectories);$(CUDA_V8_0_SAMPLES_INC);$(CUDA_PATH_V8_0)\include;.</AdditionalIncludeDirectories>
-    </ClCompile>
+      <FileType>Document</FileType>
+    </CudaCompile>
     <CudaCompile Include="src\collid.cu">
       <FileType>Document</FileType>
     </CudaCompile>
-    <ClCompile Include="src\crigid.cpp" />
-    <ClCompile Include="src\obj-viewer.cpp" />
+    <CudaCompile Include="src\crigid.cu" />
+    <CudaCompile Include="src\obj-viewer.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="inc\aabb.h" />
@@ -241,7 +244,7 @@
     <ClInclude Include="inc\tri.h" />
     <ClInclude Include="inc\vec3f.h" />
     <ClInclude Include="src\book.h" />
-    <ClInclude Include="src\crigid.h" />
+    <ClInclude Include="src\crigid.cuh" />
     <ClInclude Include="src\cuda_colide.cuh" />
   </ItemGroup>
   <ItemGroup>

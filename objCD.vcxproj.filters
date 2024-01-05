@@ -11,20 +11,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\cmodel.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\obj-viewer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\crigid.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\crigid.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="inc\aabb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -61,6 +47,9 @@
     <ClInclude Include="src\book.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\crigid.cuh">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="notes.txt">
@@ -72,6 +61,15 @@
       <Filter>Source Files</Filter>
     </CudaCompile>
     <CudaCompile Include="src\collid.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\crigid.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\obj-viewer.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\cmodel.cu">
       <Filter>Source Files</Filter>
     </CudaCompile>
   </ItemGroup>

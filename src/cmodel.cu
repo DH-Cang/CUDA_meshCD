@@ -28,7 +28,7 @@
 using namespace std;
 #include "mat3f.h"
 #include "box.h"
-#include "crigid.h"
+#include "crigid.cuh"
 #include "pair.h"
 #include <stdio.h>
 #include <omp.h>
