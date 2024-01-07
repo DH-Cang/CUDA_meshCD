@@ -163,10 +163,10 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 	HANDLE_ERROR(cudaMemcpy(device_transform1, &t1, sizeof(transf), cudaMemcpyHostToDevice));
 
 	// call kernel
-	//dim3    grids(128, 128);
-	//dim3    threads(1024, 1024);
-	unsigned int block_size = 256;
-	unsigned int num_blocks = (_num_tri + (block_size - 1)) / block_size;
+	//unsigned int block_size = 256;
+	//unsigned int num_blocks = (_num_tri + (block_size - 1)) / block_size;
+	unsigned int block_size = 16;
+	unsigned int num_blocks = 500;
 	dim3    grids(num_blocks, num_blocks);
 	dim3    threads(block_size, block_size);
 	MeshIntersectCUDA << < grids, threads >> > (
@@ -189,6 +189,15 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 	HANDLE_ERROR(cudaFree(device_triangle0_result));
 	HANDLE_ERROR(cudaFree(device_triangle1_result));
 
+	int mesh0_collide_num = 0;
+	int mesh1_collide_num = 0;
+	for (int i = 0; i < _num_tri; i++)
+	{
+		if (triangle0_result[i]) mesh0_collide_num++;
+		if (triangle1_result[i]) mesh1_collide_num++;
+	}
+	printf("mesh0: %d, mesh1: %d\n", mesh0_collide_num, mesh1_collide_num);
+
 	int mesh0_first_tri = -1;
 	for (int i = 0; i < _num_tri; i++)
 	{
@@ -197,7 +206,12 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 			break;
 		}
 	}
-	if (mesh0_first_tri == -1) return;
+	if (mesh0_first_tri == -1)
+	{
+		delete[] triangle0_result;
+		delete[] triangle1_result;
+		return;
+	}
 
 	int mesh1_first_tri = -1;
 	for (int i = 0; i < _num_tri; i++)
@@ -207,7 +221,12 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 			break;
 		}
 	}
-	if (mesh1_first_tri == -1) return;
+	if (mesh1_first_tri == -1)
+	{
+		delete[] triangle0_result;
+		delete[] triangle1_result;
+		return;
+	}
 
 	for (int i = 0; i < _num_tri; i++)
 	{
@@ -220,6 +239,9 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 			rets.push_back(id_pair(mesh0_first_tri, i, false));
 		}
 	}
+
+	
+
 	delete[] triangle0_result;
 	delete[] triangle1_result;
 

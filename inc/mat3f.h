@@ -187,7 +187,7 @@ public:
 		return result;
 	}
 
-	vec3f operator*( const vec3f& rhs) const {
+	__host__  __device__ vec3f operator*( const vec3f& rhs) const {
 		// _data[ r+c*3 ]
 		return vec3f(
 			_data[ 0+0*3 ]*rhs.x + _data[ 0+1*3 ]*rhs.y + _data[ 0+2*3 ]*rhs.z,

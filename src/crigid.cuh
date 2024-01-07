@@ -41,6 +41,13 @@
 //#include <thrust/device_vector.h>
 using namespace std;
 
+struct BoundingSphere
+{
+	vec3f center;
+	double radius = -1.0;
+};
+
+
 class kmesh {
 public:
 	unsigned int _num_vtx;
@@ -53,6 +60,8 @@ public:
 	aabb *_bxs;
 	aabb _bx;
 	int _dl;
+
+	BoundingSphere m_bounding_sphere; // vdistance
 
 public:
 	kmesh(unsigned int numVtx, unsigned int numTri, tri3f* tris, vec3f* vtxs, bool cyl) {
@@ -68,6 +77,15 @@ public:
 
 		updateNrms();
 		updateBxs();
+
+		m_bounding_sphere.center = _bx.center();
+		for (int i = 0; i < numVtx; i++)
+		{
+			double distance = vdistance(_vtxs[i], m_bounding_sphere.center);
+			if (distance > m_bounding_sphere.radius)
+				m_bounding_sphere.radius = distance;
+		}
+
 		updateDL(cyl, -1);
 	}
 

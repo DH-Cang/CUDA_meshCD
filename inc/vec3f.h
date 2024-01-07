@@ -156,11 +156,18 @@ public:
 	FORCEINLINE __host__  __device__ vec3f ()
 	{x=0; y=0; z=0;}
 
-	FORCEINLINE vec3f(const vec3f &v)
+	FORCEINLINE __host__  __device__ vec3f(const vec3f &v)
 	{
 		x = v.x;
 		y = v.y;
 		z = v.z;
+	}
+
+	FORCEINLINE __host__  __device__ vec3f(vec3f&& other) noexcept 
+	{
+		x = other.x;
+		y = other.y;
+		z = other.z;
 	}
 
 	FORCEINLINE vec3f(const REAL *v)
@@ -170,7 +177,7 @@ public:
 		z = v[2];
 	}
 
-	FORCEINLINE vec3f(REAL x, REAL y, REAL z)
+	FORCEINLINE __host__  __device__ vec3f(REAL x, REAL y, REAL z)
 	{
 		this->x = x;
 		this->y = y;
@@ -179,6 +186,20 @@ public:
 
 	FORCEINLINE REAL operator [] ( int i ) const {return v[i];}
 	FORCEINLINE REAL &operator [] (int i) { return v[i]; }
+
+	FORCEINLINE __host__  __device__ vec3f& operator = (const vec3f& v) {
+		x = v.x;
+		y = v.y;
+		z = v.z;
+		return *this;
+	}
+
+	FORCEINLINE __host__  __device__ vec3f& operator = (vec3f&& v) noexcept {
+		x = v.x;
+		y = v.y;
+		z = v.z;
+		return *this;
+	}
 
 	FORCEINLINE vec3f &operator += (const vec3f &v) {
 		x += v.x;
@@ -223,7 +244,7 @@ public:
 		return vec3f(-x, -y, -z);
 	}
 
-	FORCEINLINE vec3f operator+ (const vec3f &v) const
+	FORCEINLINE __host__  __device__ vec3f operator+ (const vec3f &v) const
 	{
 		return vec3f(x+v.x, y+v.y, z+v.z);
 	}
@@ -233,12 +254,12 @@ public:
 		return vec3f(x-v.x, y-v.y, z-v.z);
 	}
 
-	FORCEINLINE vec3f operator *(REAL t) const
+	FORCEINLINE __host__  __device__ vec3f operator *(REAL t) const
 	{
 		return vec3f(x*t, y*t, z*t);
 	}
 
-	FORCEINLINE vec3f operator /(REAL t) const
+	FORCEINLINE __host__  __device__ vec3f operator /(REAL t) const
 	{
 		return vec3f(x/t, y/t, z/t);
 	}
@@ -249,7 +270,7 @@ public:
           return vec3f(y*vec.z - z*vec.y, z*vec.x - x*vec.z, x*vec.y - y*vec.x);
      }
 
-	 FORCEINLINE REAL dot(const vec3f &vec) const {
+	 FORCEINLINE REAL __host__  __device__ dot(const vec3f &vec) const {
 		 return x*vec.x+y*vec.y+z*vec.z;
 	 }
 

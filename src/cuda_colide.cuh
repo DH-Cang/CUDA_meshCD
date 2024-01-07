@@ -8,14 +8,6 @@
 #include "box.h"
 #include "crigid.cuh"
 
-// __constant__ Sphere s[SPHERES];
-
-
-__global__ void vectorAddition(const float* a, const float* b, float* c, int size);
-
-int here();
-
-
 inline __host__ __device__ double fmax(double a, double b, double c)
 {
 	double t = a;
