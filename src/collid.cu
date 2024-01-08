@@ -209,14 +209,14 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 	// reduce triangle id
 	thrust::counting_iterator<int> counting(0);
 	thrust::device_vector<int> d_culled_tri0_ids(_num_tri);
-	auto end0 = thrust::copy_if(
+	auto temp_end = thrust::copy_if(
 		counting,
 		counting + _num_tri,
 		d_tri0_culling_stencil.begin(),
 		d_culled_tri0_ids.begin(),
 		thrust::identity<bool>()
 	);
-	d_culled_tri0_ids.resize(end0 - d_culled_tri0_ids.begin());
+	d_culled_tri0_ids.resize(temp_end - d_culled_tri0_ids.begin());
 
 	// =================================== check mesh1 with sphere0 =============================
 	// check mesh1 intersect with sphere0, culling vertex
@@ -240,16 +240,16 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 		);
 	// reduce triangle id
 	thrust::device_vector<int> d_culled_tri1_ids(other->_num_tri);
-	auto end1 = thrust::copy_if(
+	temp_end = thrust::copy_if(
 		counting,
 		counting + other->_num_tri,
 		d_tri1_culling_stencil.begin(),
 		d_culled_tri1_ids.begin(),
 		thrust::identity<bool>()
 	);
-	d_culled_tri1_ids.resize(end1 - d_culled_tri1_ids.begin());
+	d_culled_tri1_ids.resize(temp_end - d_culled_tri1_ids.begin());
 	
-	printf("mesh0 tri num: %d   mesh1 tri num: %d\n", d_culled_tri0_ids.size(), d_culled_tri1_ids.size());
+	printf("culled mesh0 tri num: %d, culled mesh1 tri num: %d\n", d_culled_tri0_ids.size(), d_culled_tri1_ids.size());
 
 
 	// ====================================== use cuda intersect ===========================================
@@ -268,59 +268,40 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 		thrust::raw_pointer_cast(d_triangle0_result.data()), thrust::raw_pointer_cast(d_triangle1_result.data()));
 	cudaDeviceSynchronize();
 
+	// ======================================= reduce get triangle id ====================================
+	thrust::device_vector<int> d_intersected_tri0_ids(_num_tri);
+	temp_end = thrust::copy_if(
+		counting,
+		counting + _num_tri,
+		d_triangle0_result.begin(),
+		d_intersected_tri0_ids.begin(),
+		thrust::identity<bool>()
+	);
+	d_intersected_tri0_ids.resize(temp_end - d_intersected_tri0_ids.begin());
+
+	thrust::device_vector<int> d_intersected_tri1_ids(other->_num_tri);
+	temp_end = thrust::copy_if(
+		counting,
+		counting + _num_tri,
+		d_triangle1_result.begin(),
+		d_intersected_tri1_ids.begin(),
+		thrust::identity<bool>()
+	);
+	d_intersected_tri1_ids.resize(temp_end - d_intersected_tri1_ids.begin());
+
 	// copy result from device to host
-	thrust::host_vector<bool> h_triangle0_result = d_triangle0_result;
-	thrust::host_vector<bool> h_triangle1_result = d_triangle1_result;
+	thrust::host_vector<int> h_intersected_tri0_ids = d_intersected_tri0_ids;
+	thrust::host_vector<int> h_intersected_tri1_ids = d_intersected_tri1_ids;
 
+	for (int i = 0; i < h_intersected_tri0_ids.size(); i++)
+	{
+		rets.push_back(id_pair(h_intersected_tri0_ids[i], h_intersected_tri1_ids[0], false));
+	}
+	for (int i = 0; i < h_intersected_tri1_ids.size(); i++)
+	{
+		rets.push_back(id_pair(h_intersected_tri0_ids[0], h_intersected_tri1_ids[i], false));
+	}
 	
-
-	int mesh0_collide_num = 0;
-	int mesh1_collide_num = 0;
-	for (int i = 0; i < _num_tri; i++)
-	{
-		if (h_triangle0_result[i]) mesh0_collide_num++;
-		if (h_triangle1_result[i]) mesh1_collide_num++;
-	}
-	printf("mesh0: %d, mesh1: %d\n", mesh0_collide_num, mesh1_collide_num);
-
-	int mesh0_first_tri = -1;
-	for (int i = 0; i < _num_tri; i++)
-	{
-		if (h_triangle0_result[i]) {
-			mesh0_first_tri = i;
-			break;
-		}
-	}
-	if (mesh0_first_tri == -1)
-	{
-		return;
-	}
-
-	int mesh1_first_tri = -1;
-	for (int i = 0; i < _num_tri; i++)
-	{
-		if (h_triangle1_result[i]) {
-			mesh1_first_tri = i;
-			break;
-		}
-	}
-	if (mesh1_first_tri == -1)
-	{
-		return;
-	}
-
-	for (int i = 0; i < _num_tri; i++)
-	{
-		if (h_triangle0_result[i])
-		{
-			rets.push_back(id_pair(i, mesh1_first_tri, false));
-		}
-		if (h_triangle1_result[i])
-		{
-			rets.push_back(id_pair(mesh0_first_tri, i, false));
-		}
-	}
-
 	// free memory
 	HANDLE_ERROR(cudaFree(d_transform0));
 	HANDLE_ERROR(cudaFree(d_transform1));
