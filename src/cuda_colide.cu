@@ -73,9 +73,10 @@ __device__ bool GPUTriangleContact(vec3f& P1, vec3f& P2, vec3f& P3, vec3f& Q1, v
 }
 
 __global__ void MeshIntersectCUDA(
-    vec3f* mesh0_vertex_array, tri3f* mesh0_triangle_array, transf* transform0,
-    vec3f* mesh1_vertex_array, tri3f* mesh1_triangle_array, transf* transform1,
-    int* triangle0_num, int* triangle1_num, 
+    vec3f* mesh0_vertex_array, tri3f* mesh0_triangle_array,
+    vec3f* mesh1_vertex_array, tri3f* mesh1_triangle_array,
+    transf* transform0, transf* transform1,
+    int triangle0_num, int triangle1_num, 
     bool* triangle0_result, bool* triangle1_result)
 {
     int triangle_index0 = blockIdx.x * blockDim.x + threadIdx.x;
@@ -86,7 +87,7 @@ __global__ void MeshIntersectCUDA(
 
 
     // make sure there is no overflow
-    if (triangle_index0 >= *triangle0_num || triangle_index1 >= *triangle1_num)
+    if (triangle_index0 >= triangle0_num || triangle_index1 >= triangle1_num)
     {
         return;
     }
