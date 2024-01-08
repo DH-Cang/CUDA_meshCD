@@ -77,7 +77,8 @@ public:
 
 		updateNrms();
 		updateBxs();
-
+		
+		// build bounding sphere
 		m_bounding_sphere.center = _bx.center();
 		for (int i = 0; i < numVtx; i++)
 		{

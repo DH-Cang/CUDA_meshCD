@@ -402,6 +402,12 @@ inline REAL vdistance(const vec3f &a, const vec3f &b)
 	return (a-b).length();
 }
 
+inline REAL dist_square(const vec3f& a, const vec3f& b)
+{
+	vec3f v = a - b;
+	return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
 
 inline std::ostream& operator<<( std::ostream&os, const vec3f &v ) {
 	os << "(" << v.x << ", " << v.y << ", " << v.z << ")" << std::endl;
