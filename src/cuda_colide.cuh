@@ -68,8 +68,17 @@ __device__ bool GPUTriangleContact(vec3f& P1, vec3f& P2, vec3f& P3, vec3f& Q1, v
 // return:
 //	a list of pair: intersected triangles
 __global__ void MeshIntersectCUDA(
+	int* mesh0_tri_ids, int* mesh1_tri_ids,
 	vec3f* mesh0_vertex_array, tri3f* mesh0_triangle_array,
 	vec3f* mesh1_vertex_array, tri3f* mesh1_triangle_array,
 	transf* transform0, transf* transform1,
 	int triangle0_num, int triangle1_num, 
 	bool* triangle0_result, bool* triangle1_result);
+
+// vertex array: each vertex will be transformed
+__global__ void MeshPreprocessCUDA(
+	vec3f* vertex_array,
+	BoundingSphere* bounding_sphere_of_other_mesh,
+	transf* transform,
+	int vertex_num,
+	bool vertex_result);

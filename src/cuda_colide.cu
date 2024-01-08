@@ -73,18 +73,18 @@ __device__ bool GPUTriangleContact(vec3f& P1, vec3f& P2, vec3f& P3, vec3f& Q1, v
 }
 
 __global__ void MeshIntersectCUDA(
+    int* mesh0_tri_ids, int* mesh1_tri_ids,
     vec3f* mesh0_vertex_array, tri3f* mesh0_triangle_array,
     vec3f* mesh1_vertex_array, tri3f* mesh1_triangle_array,
     transf* transform0, transf* transform1,
     int triangle0_num, int triangle1_num, 
     bool* triangle0_result, bool* triangle1_result)
 {
-    int triangle_index0 = blockIdx.x * blockDim.x + threadIdx.x;
-    int triangle_index1 = blockIdx.y * blockDim.y + threadIdx.y;
+    int thread_id0 = blockIdx.x * blockDim.x + threadIdx.x;
+    int thread_id1 = blockIdx.y * blockDim.y + threadIdx.y;
 
-    //printf("here\n");
-    //printf("compare triangle %d in mesh0 with triangle %d in mesh1\n", triangle_index0, triangle_index1);
-
+    int triangle_index0 = mesh0_tri_ids[thread_id0];
+    int triangle_index1 = mesh1_tri_ids[thread_id1];
 
     // make sure there is no overflow
     if (triangle_index0 >= triangle0_num || triangle_index1 >= triangle1_num)
@@ -118,7 +118,6 @@ __global__ void MeshIntersectCUDA(
     
     if (result)
     {  
-        //printf("true\n");
         triangle0_result[triangle_index0] = true;
         triangle1_result[triangle_index1] = true;
     }    

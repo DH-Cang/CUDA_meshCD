@@ -34,6 +34,7 @@
 #include <device_launch_parameters.h>
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
+#include <thrust/copy.h>
 
 using namespace std;
 #include "mat3f.h"
@@ -187,7 +188,8 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 
 
 	// ====================================== use cuda intersect ===========================================
-
+	thrust::device_vector<int> d_mesh0_tri_ids = mesh0_tri_ids;
+	thrust::device_vector<int> d_mesh1_tri_ids = mesh1_tri_ids;
 	thrust::device_vector<tri3f> d_mesh0_tris(_tris, _tris+_num_tri);
 	thrust::device_vector<tri3f> d_mesh1_tris(other->_tris, other->_tris + other->_num_tri);
 	thrust::device_vector<vec3f> d_mesh0_vtxs(_vtxs, _vtxs + _num_vtx);
@@ -207,12 +209,13 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 
 	// call kernel
 	unsigned int block_size = 16;
-	unsigned int num_blocks = (_num_tri + (block_size - 1)) / block_size;
-	//unsigned int block_size = 16;
-	//unsigned int num_blocks = 500;
-	dim3    grids(num_blocks, num_blocks);
-	dim3    threads(block_size, block_size);
+	dim3 threads(block_size, block_size);
+	dim3 grids(
+		(d_mesh0_tri_ids.size() + (block_size - 1)) / block_size,
+		(d_mesh1_tri_ids.size() + (block_size - 1)) / block_size);
+	//dim3 grids(500, 500);
 	MeshIntersectCUDA << < grids, threads >> > (
+		thrust::raw_pointer_cast(d_mesh0_tri_ids.data()), thrust::raw_pointer_cast(d_mesh1_tri_ids.data()),
 		thrust::raw_pointer_cast(d_mesh0_vtxs.data()), thrust::raw_pointer_cast(d_mesh0_tris.data()), 
 		thrust::raw_pointer_cast(d_mesh1_vtxs.data()), thrust::raw_pointer_cast(d_mesh1_tris.data()), 
 		d_transform0, d_transform1,
