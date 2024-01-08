@@ -219,7 +219,7 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 		thrust::raw_pointer_cast(d_mesh0_vtxs.data()), thrust::raw_pointer_cast(d_mesh0_tris.data()), 
 		thrust::raw_pointer_cast(d_mesh1_vtxs.data()), thrust::raw_pointer_cast(d_mesh1_tris.data()), 
 		d_transform0, d_transform1,
-		this->_num_tri, other->_num_tri,
+		d_mesh0_tri_ids.size(), d_mesh1_tri_ids.size(),
 		thrust::raw_pointer_cast(d_triangle0_result.data()), thrust::raw_pointer_cast(d_triangle1_result.data()));
 
 	// copy result from device to host

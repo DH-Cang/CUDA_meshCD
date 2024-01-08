@@ -83,14 +83,14 @@ __global__ void MeshIntersectCUDA(
     int thread_id0 = blockIdx.x * blockDim.x + threadIdx.x;
     int thread_id1 = blockIdx.y * blockDim.y + threadIdx.y;
 
-    int triangle_index0 = mesh0_tri_ids[thread_id0];
-    int triangle_index1 = mesh1_tri_ids[thread_id1];
-
     // make sure there is no overflow
-    if (triangle_index0 >= triangle0_num || triangle_index1 >= triangle1_num)
+    if (thread_id0 >= triangle0_num || thread_id1 >= triangle1_num)
     {
         return;
     }
+
+    int triangle_index0 = mesh0_tri_ids[thread_id0];
+    int triangle_index1 = mesh1_tri_ids[thread_id1];
 
     // get vertex coords of triangle0, with transformation
     tri3f triangle0 = mesh0_triangle_array[triangle_index0];
@@ -121,4 +121,15 @@ __global__ void MeshIntersectCUDA(
         triangle0_result[triangle_index0] = true;
         triangle1_result[triangle_index1] = true;
     }    
+}
+
+
+__global__ void MeshPreprocessCUDA(
+    vec3f* vertex_array,
+    BoundingSphere* bounding_sphere_of_other_mesh,
+    transf* transform,
+    bool* vertex_result,
+    int vertex_num)
+{
+    int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
 }

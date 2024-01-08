@@ -76,9 +76,10 @@ __global__ void MeshIntersectCUDA(
 	bool* triangle0_result, bool* triangle1_result);
 
 // vertex array: each vertex will be transformed
+// vertex result: vertex_result[i] == true, if this vertex is in the bounding sphere of another mesh
 __global__ void MeshPreprocessCUDA(
 	vec3f* vertex_array,
 	BoundingSphere* bounding_sphere_of_other_mesh,
 	transf* transform,
-	int vertex_num,
-	bool vertex_result);
+	bool* vertex_result,
+	int vertex_num);
