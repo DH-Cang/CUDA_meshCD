@@ -76,7 +76,6 @@ __global__ void MeshIntersectCUDA(
     int* mesh0_tri_ids, int* mesh1_tri_ids,
     vec3f* mesh0_vertex_array, tri3f* mesh0_triangle_array,
     vec3f* mesh1_vertex_array, tri3f* mesh1_triangle_array,
-    transf* transform0, transf* transform1,
     int triangle0_num, int triangle1_num, 
     bool* triangle0_result, bool* triangle1_result)
 {
@@ -97,8 +96,7 @@ __global__ void MeshIntersectCUDA(
     vec3f triangle0_vertex_coords[3];
     for (int i = 0; i < 3; i++)
     {
-        vec3f vertex_coords = mesh0_vertex_array[triangle0.id(i)];
-        triangle0_vertex_coords[i] = transform0->getVertex(vertex_coords);
+        triangle0_vertex_coords[i] = mesh0_vertex_array[triangle0.id(i)];
     }
 
     // get vertex coords of triangle1, with transformation
@@ -106,8 +104,7 @@ __global__ void MeshIntersectCUDA(
     vec3f triangle1_vertex_coords[3];
     for (int i = 0; i < 3; i++)
     {
-        vec3f vertex_coords = mesh1_vertex_array[triangle1.id(i)];
-        triangle1_vertex_coords[i] = transform1->getVertex(vertex_coords);
+        triangle1_vertex_coords[i] = mesh1_vertex_array[triangle1.id(i)];
     }
 
     // get triangle contact check result
@@ -126,10 +123,54 @@ __global__ void MeshIntersectCUDA(
 
 __global__ void MeshPreprocessCUDA(
     vec3f* vertex_array,
-    BoundingSphere* bounding_sphere_of_other_mesh,
-    transf* transform,
     bool* vertex_result,
+    BoundingSphere* other_b_sphere,
+    transf* transform,
     int vertex_num)
 {
     int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // no overflow
+    if (thread_id >= vertex_num)
+    {
+        return;
+    }
+
+    // make transformation
+    vec3f vtx_coord = transform->getVertex(vertex_array[thread_id]);
+    vertex_array[thread_id] = vtx_coord;
+
+    // check if inside bounding sphere
+    bool in_sphere_flag =
+        (dist_square(vtx_coord, other_b_sphere->center) <= other_b_sphere->radius * other_b_sphere->radius);
+    vertex_result[thread_id] = in_sphere_flag;
 }
+
+
+__global__ void TriCullingCUDA(
+    tri3f* triangle_array,
+    bool* tri_culling_result,
+    bool* vertex_culling_result,
+    int tri_num
+)
+{
+    int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // no overflow
+    if (thread_id >= tri_num)
+    {
+        return;
+    }
+
+    unsigned int vtx_id0 = triangle_array[thread_id].id(0);
+    unsigned int vtx_id1 = triangle_array[thread_id].id(1);
+    unsigned int vtx_id2 = triangle_array[thread_id].id(2);
+
+    bool tri_in_sphere_flag =
+        vertex_culling_result[vtx_id0] ||
+        vertex_culling_result[vtx_id1] ||
+        vertex_culling_result[vtx_id2];
+
+    tri_culling_result[thread_id] = tri_in_sphere_flag;
+}
+

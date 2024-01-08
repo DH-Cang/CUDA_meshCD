@@ -34,7 +34,9 @@
 #include <device_launch_parameters.h>
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
+#include <thrust/fill.h>
 #include <thrust/copy.h>
+#include <thrust/iterator/counting_iterator.h>
 
 using namespace std;
 #include "mat3f.h"
@@ -143,60 +145,12 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 		}
 }
 #else
-
-	// ====================================== check bounding sphere ======================================
-
-	thrust::host_vector<int> mesh0_tri_ids;
-	thrust::host_vector<int> mesh1_tri_ids;
-
-	BoundingSphere sphere0(this->m_bounding_sphere), sphere1(other->m_bounding_sphere);
-	sphere0.center = t0.getVertex(sphere0.center);
-	sphere1.center = t1.getVertex(sphere1.center);
-
-	for (int i = 0; i < _num_tri; i++)
-	{
-		tri3f tri = _tris[i];
-		vec3f mesh0_points[3];
-		vec3f mesh1_points[3];
-		for (int j = 0; j < 3; j++)
-		{
-			mesh0_points[j] = t0.getVertex(_vtxs[tri.id(j)]);
-			mesh1_points[j] = t1.getVertex(_vtxs[tri.id(j)]);
-		}
-
-		// check mesh0
-		bool is_in_mesh1_sphere =
-			(dist_square(mesh0_points[0], sphere1.center) < sphere1.radius * sphere1.radius) ||
-			(dist_square(mesh0_points[1], sphere1.center) < sphere1.radius * sphere1.radius) ||
-			(dist_square(mesh0_points[2], sphere1.center) < sphere1.radius * sphere1.radius);
-		if (is_in_mesh1_sphere)
-		{
-			mesh0_tri_ids.push_back(i);
-		}
-
-		bool is_in_mesh0_sphere =
-			(dist_square(mesh1_points[0], sphere0.center) < sphere0.radius * sphere0.radius) ||
-			(dist_square(mesh1_points[1], sphere0.center) < sphere0.radius * sphere0.radius) ||
-			(dist_square(mesh1_points[2], sphere0.center) < sphere0.radius * sphere0.radius);
-		if (is_in_mesh0_sphere)
-		{
-			mesh1_tri_ids.push_back(i);
-		}
-	}
-
-	printf("mesh0 tri num: %d     mesh1 tri num: %d\n", mesh0_tri_ids.size(), mesh1_tri_ids.size());
-
-
-	// ====================================== use cuda intersect ===========================================
-	thrust::device_vector<int> d_mesh0_tri_ids = mesh0_tri_ids;
-	thrust::device_vector<int> d_mesh1_tri_ids = mesh1_tri_ids;
-	thrust::device_vector<tri3f> d_mesh0_tris(_tris, _tris+_num_tri);
+	thrust::device_vector<tri3f> d_mesh0_tris(_tris, _tris + _num_tri);
 	thrust::device_vector<tri3f> d_mesh1_tris(other->_tris, other->_tris + other->_num_tri);
 	thrust::device_vector<vec3f> d_mesh0_vtxs(_vtxs, _vtxs + _num_vtx);
 	thrust::device_vector<vec3f> d_mesh1_vtxs(other->_vtxs, other->_vtxs + other->_num_vtx);
 	thrust::device_vector<bool> d_triangle0_result(_num_tri);
 	thrust::device_vector<bool> d_triangle1_result(other->_num_tri);
-	
 
 	transf* d_transform0;
 	transf* d_transform1;
@@ -207,28 +161,118 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 	HANDLE_ERROR(cudaMemcpy(d_transform0, &t0, sizeof(transf), cudaMemcpyHostToDevice));
 	HANDLE_ERROR(cudaMemcpy(d_transform1, &t1, sizeof(transf), cudaMemcpyHostToDevice));
 
+	const unsigned int block_size = 16;
+	dim3 threads;
+	dim3 grids;
+
+	// ====================================== check bounding sphere ======================================
+
+	// prepare result array
+	thrust::device_vector<bool> d_vertex0_preprocess_result(_num_vtx);
+	thrust::device_vector<bool> d_vertex1_preprocess_result(other->_num_vtx);
+
+	// bounding sphere transformation
+	BoundingSphere sphere0(this->m_bounding_sphere), sphere1(other->m_bounding_sphere);
+	sphere0.center = t0.getVertex(sphere0.center);
+	sphere1.center = t1.getVertex(sphere1.center);
+
+	BoundingSphere* d_sphere0;
+	BoundingSphere* d_sphere1;
+	// allocate memory
+	HANDLE_ERROR(cudaMalloc((void**)&d_sphere0, sizeof(BoundingSphere)));
+	HANDLE_ERROR(cudaMalloc((void**)&d_sphere1, sizeof(BoundingSphere)));
+	// copy from host to device
+	HANDLE_ERROR(cudaMemcpy(d_sphere0, &sphere0, sizeof(BoundingSphere), cudaMemcpyHostToDevice));
+	HANDLE_ERROR(cudaMemcpy(d_sphere1, &sphere1, sizeof(BoundingSphere), cudaMemcpyHostToDevice));
+
+	// =================================== check mesh0 with sphere1 =============================
+	// check mesh0 intersect with sphere1, culling vertex
+	threads = dim3(block_size);
+	grids = dim3((d_vertex0_preprocess_result.size() + (block_size - 1)) / block_size);
+	MeshPreprocessCUDA << < grids, threads >> > (
+		thrust::raw_pointer_cast(d_mesh0_vtxs.data()),
+		thrust::raw_pointer_cast(d_vertex0_preprocess_result.data()),
+		d_sphere1,
+		d_transform0,
+		d_vertex0_preprocess_result.size()
+		);
+	// culling triangles
+	thrust::device_vector<bool> d_tri0_culling_stencil(_num_tri);
+	threads = dim3(block_size);
+	grids = dim3((d_tri0_culling_stencil.size() + (block_size - 1)) / block_size);
+	TriCullingCUDA << < grids, threads >> > (
+		thrust::raw_pointer_cast(d_mesh0_tris.data()),
+		thrust::raw_pointer_cast(d_tri0_culling_stencil.data()),
+		thrust::raw_pointer_cast(d_vertex0_preprocess_result.data()),
+		d_tri0_culling_stencil.size()
+		);
+	// reduce triangle id
+	thrust::counting_iterator<int> counting(0);
+	thrust::device_vector<int> d_culled_tri0_ids(_num_tri);
+	auto end0 = thrust::copy_if(
+		counting,
+		counting + _num_tri,
+		d_tri0_culling_stencil.begin(),
+		d_culled_tri0_ids.begin(),
+		thrust::identity<bool>()
+	);
+	d_culled_tri0_ids.resize(end0 - d_culled_tri0_ids.begin());
+
+	// =================================== check mesh1 with sphere0 =============================
+	// check mesh1 intersect with sphere0, culling vertex
+	grids = dim3((d_vertex1_preprocess_result.size() + (block_size - 1)) / block_size);
+	MeshPreprocessCUDA << < grids, threads >> > (
+		thrust::raw_pointer_cast(d_mesh1_vtxs.data()),
+		thrust::raw_pointer_cast(d_vertex1_preprocess_result.data()),
+		d_sphere0,
+		d_transform1,
+		d_vertex1_preprocess_result.size()
+		);
+	// culling mesh1 triangles
+	thrust::device_vector<bool> d_tri1_culling_stencil(other->_num_tri);
+	threads = dim3(block_size);
+	grids = dim3((d_tri1_culling_stencil.size() + (block_size - 1)) / block_size);
+	TriCullingCUDA << < grids, threads >> > (
+		thrust::raw_pointer_cast(d_mesh1_tris.data()),
+		thrust::raw_pointer_cast(d_tri1_culling_stencil.data()),
+		thrust::raw_pointer_cast(d_vertex1_preprocess_result.data()),
+		d_tri1_culling_stencil.size()
+		);
+	// reduce triangle id
+	thrust::device_vector<int> d_culled_tri1_ids(other->_num_tri);
+	auto end1 = thrust::copy_if(
+		counting,
+		counting + other->_num_tri,
+		d_tri1_culling_stencil.begin(),
+		d_culled_tri1_ids.begin(),
+		thrust::identity<bool>()
+	);
+	d_culled_tri1_ids.resize(end1 - d_culled_tri1_ids.begin());
+	
+	printf("mesh0 tri num: %d   mesh1 tri num: %d\n", d_culled_tri0_ids.size(), d_culled_tri1_ids.size());
+
+
+	// ====================================== use cuda intersect ===========================================
+	
 	// call kernel
-	unsigned int block_size = 16;
-	dim3 threads(block_size, block_size);
-	dim3 grids(
-		(d_mesh0_tri_ids.size() + (block_size - 1)) / block_size,
-		(d_mesh1_tri_ids.size() + (block_size - 1)) / block_size);
-	//dim3 grids(500, 500);
+	threads = dim3(block_size, block_size);
+	grids = dim3(
+		(d_culled_tri0_ids.size() + (block_size - 1)) / block_size,
+		(d_culled_tri1_ids.size() + (block_size - 1)) / block_size);
+	//grids = dim3(500, 500);
 	MeshIntersectCUDA << < grids, threads >> > (
-		thrust::raw_pointer_cast(d_mesh0_tri_ids.data()), thrust::raw_pointer_cast(d_mesh1_tri_ids.data()),
+		thrust::raw_pointer_cast(d_culled_tri0_ids.data()), thrust::raw_pointer_cast(d_culled_tri1_ids.data()),
 		thrust::raw_pointer_cast(d_mesh0_vtxs.data()), thrust::raw_pointer_cast(d_mesh0_tris.data()), 
 		thrust::raw_pointer_cast(d_mesh1_vtxs.data()), thrust::raw_pointer_cast(d_mesh1_tris.data()), 
-		d_transform0, d_transform1,
-		d_mesh0_tri_ids.size(), d_mesh1_tri_ids.size(),
+		d_culled_tri0_ids.size(), d_culled_tri1_ids.size(),
 		thrust::raw_pointer_cast(d_triangle0_result.data()), thrust::raw_pointer_cast(d_triangle1_result.data()));
+	cudaDeviceSynchronize();
 
 	// copy result from device to host
 	thrust::host_vector<bool> h_triangle0_result = d_triangle0_result;
 	thrust::host_vector<bool> h_triangle1_result = d_triangle1_result;
 
-	// free memory
-	HANDLE_ERROR(cudaFree(d_transform0));
-	HANDLE_ERROR(cudaFree(d_transform1));
+	
 
 	int mesh0_collide_num = 0;
 	int mesh1_collide_num = 0;
@@ -276,5 +320,11 @@ kmesh::collide(const kmesh* other, const transf& t0, const transf &t1, std::vect
 			rets.push_back(id_pair(mesh0_first_tri, i, false));
 		}
 	}
+
+	// free memory
+	HANDLE_ERROR(cudaFree(d_transform0));
+	HANDLE_ERROR(cudaFree(d_transform1));
+	HANDLE_ERROR(cudaFree(d_sphere0));
+	HANDLE_ERROR(cudaFree(d_sphere1));
 #endif // !GPU_ACCELE
 }

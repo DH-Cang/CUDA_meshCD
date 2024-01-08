@@ -71,15 +71,22 @@ __global__ void MeshIntersectCUDA(
 	int* mesh0_tri_ids, int* mesh1_tri_ids,
 	vec3f* mesh0_vertex_array, tri3f* mesh0_triangle_array,
 	vec3f* mesh1_vertex_array, tri3f* mesh1_triangle_array,
-	transf* transform0, transf* transform1,
 	int triangle0_num, int triangle1_num, 
 	bool* triangle0_result, bool* triangle1_result);
 
 // vertex array: each vertex will be transformed
-// vertex result: vertex_result[i] == true, if this vertex is in the bounding sphere of another mesh
+// vertex result: vertex_result[i] == true, if this vertex i is in the bounding sphere of another mesh
 __global__ void MeshPreprocessCUDA(
 	vec3f* vertex_array,
-	BoundingSphere* bounding_sphere_of_other_mesh,
-	transf* transform,
 	bool* vertex_result,
+	BoundingSphere* other_b_sphere,
+	transf* transform,
 	int vertex_num);
+
+
+__global__ void TriCullingCUDA(
+	tri3f* triangle_array,
+	bool* tri_culling_result,
+	bool* vertex_culling_result,
+	int tri_num
+);
